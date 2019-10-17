@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -13,7 +14,8 @@ import (
 var mux sync.Mutex = sync.Mutex{}
 
 func main() {
-	fmt.Println("Go!")
+	timer_length_ptr := flag.Int("time", 5, "Time length of quiz")
+	flag.Parse()
 	file, _ := os.Open("problems.csv")
 	r := csv.NewReader(file)
 	lines, _ := r.ReadAll()
@@ -26,7 +28,7 @@ func main() {
 	ch := make(chan int)
 	timerchan := make(chan bool)
 	go run_quiz(lines, ch)
-	go run_timer(timerchan)
+	go run_timer(timerchan, *timer_length_ptr)
 bigloop:
 	for {
 		select {
@@ -44,8 +46,8 @@ bigloop:
 	return
 }
 
-func run_timer(timechan chan bool) {
-	time.Sleep(5 * time.Second)
+func run_timer(timechan chan bool, timer_length int) {
+	time.Sleep(time.Duration(timer_length) * time.Second)
 	timechan <- true
 }
 
