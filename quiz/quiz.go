@@ -18,6 +18,7 @@ func main() {
 	r := csv.NewReader(file)
 	lines, _ := r.ReadAll()
 	num_correct := 0
+	num_asked := 0
 	total := len(lines)
 	fmt.Println("Press enter when you are ready for the quiz to start")
 	start_reader := bufio.NewReader(os.Stdin)
@@ -31,8 +32,10 @@ bigloop:
 		select {
 		case <-timerchan:
 			break bigloop
-		case num_correct = <-ch:
-			if num_correct == total {
+		case correct := <-ch:
+			num_correct += correct
+			num_asked++
+			if num_asked == total {
 				break bigloop
 			}
 		}
@@ -47,7 +50,6 @@ func run_timer(timechan chan bool) {
 }
 
 func run_quiz(lines [][]string, ch chan int) {
-	num_correct := 0
 	for _, line := range lines {
 		question := line[0]
 		answer := line[1]
@@ -56,8 +58,9 @@ func run_quiz(lines [][]string, ch chan int) {
 		input, _ := answer_reader.ReadString('\n')
 		input = strings.TrimSuffix(input, "\n")
 		if answer == input {
-			num_correct++
-			ch <- num_correct
+			ch <- 1
+		} else {
+			ch <- 0
 		}
 	}
 }
