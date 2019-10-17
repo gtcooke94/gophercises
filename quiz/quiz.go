@@ -7,11 +7,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"time"
 )
-
-var mux sync.Mutex = sync.Mutex{}
 
 func main() {
 	timer_length_ptr := flag.Int("time", 5, "Time length of quiz")
@@ -33,6 +30,7 @@ bigloop:
 	for {
 		select {
 		case <-timerchan:
+			fmt.Println("Out of time!")
 			break bigloop
 		case correct := <-ch:
 			num_correct += correct
@@ -42,7 +40,7 @@ bigloop:
 			}
 		}
 	}
-	fmt.Printf("%v/%v Correct", num_correct, total)
+	fmt.Printf("%v/%v Correct\n", num_correct, total)
 	return
 }
 
