@@ -22,7 +22,7 @@ func main() {
 	fmt.Println("Press enter when you are ready for the quiz to start")
 	start_reader := bufio.NewReader(os.Stdin)
 	start_reader.ReadString('\n')
-	ch := make(chan int)
+	ch := make(chan int, total)
 	timerchan := make(chan bool)
 	go run_quiz(lines, ch)
 	go run_timer(timerchan, *timer_length_ptr)
