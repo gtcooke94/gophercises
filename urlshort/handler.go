@@ -1,6 +1,7 @@
 package urlshort
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -12,7 +13,25 @@ import (
 // http.Handler will be called instead.
 func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.HandlerFunc {
 	//	TODO: Implement this...
-	return nil
+	fmt.Println("In MapHandler")
+	// http.HandlerFunc is a type that is really just a function
+	return func(w http.ResponseWriter, r *http.Request) {
+		asked_path := r.URL.Path
+		new_path, ok := pathsToUrls[asked_path]
+		if ok {
+			fmt.Printf("Redirecting %v to %v\n", asked_path, new_path)
+			// 302 is the integer code for Found in redirect
+			// Better to use http.StatusFound
+			// http.Redirect(w, r, new_path, 302)
+			http.Redirect(w, r, new_path, http.StatusFound)
+			return
+		}
+		fmt.Printf("Serving %v\n", asked_path)
+		fallback.ServeHTTP(w, r)
+	}
+	// for shortened, redirect := range pathsToUrls {
+	//     fmt.Printf("%v, %v", shortened, redirect)
+	// }
 }
 
 // YAMLHandler will parse the provided YAML and then return
