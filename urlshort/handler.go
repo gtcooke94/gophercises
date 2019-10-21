@@ -14,7 +14,6 @@ import (
 // http.Handler will be called instead.
 func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.HandlerFunc {
 	//	TODO: Implement this...
-	fmt.Println("In MapHandler")
 	// http.HandlerFunc is a type that is really just a function
 	return func(w http.ResponseWriter, r *http.Request) {
 		asked_path := r.URL.Path
