@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	// "bufio"
 	"encoding/csv"
 	"flag"
 	"fmt"
