@@ -63,3 +63,9 @@ func parse_json(filename string) *StoryJson {
 	json.Unmarshal(bytes, &story_json)
 	return &story_json
 }
+
+type StoryRunner interface {
+	GetOption() int
+	DisplayArc(*StoryArc) bool
+	StartStory(string) *StoryArc
+}
