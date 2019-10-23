@@ -23,6 +23,9 @@ type Option struct {
 	Arc       *StoryArc
 }
 
+// Keep a global variable that is the story's start
+var start_arc_ptr *StoryArc
+
 func StartStory(filename string) *StoryArc {
 	story_json := parse_json(filename)
 	story_start := build_story(story_json)
@@ -31,14 +34,18 @@ func StartStory(filename string) *StoryArc {
 }
 
 func (arc *StoryArc) Advance(selection int) *StoryArc {
+	// If the selection is -1, return to the beginning
+	if selection == -1 {
+		return start_arc_ptr
+	}
 	return arc.Options[selection].Arc
-
 }
 
 type StoryJson map[string]*StoryArc
 
 func build_story(story_json *StoryJson) *StoryArc {
 	start_arc := (*story_json)["intro"]
+	start_arc_ptr = start_arc
 	// Link the arcs
 	for k, _ := range *story_json {
 		for i, _ := range (*story_json)[k].Options {
