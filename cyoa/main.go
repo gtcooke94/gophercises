@@ -12,13 +12,10 @@ func main() {
 	serve_method := flag.String("s", "cli", "Method you want the story served via")
 	port := flag.Int("port", 8080, "Port to serve the webapp on")
 	flag.Parse()
-	fmt.Println("Start")
-	// story_json := cyoa.StartStory("gopher.json")
-	// story_start := cyoa.StartStory("gopher.json")
 	var story_runner cyoa.StoryRunner
 	switch *serve_method {
 	case "cli":
-		story_runner = storycli.StoryCLI{}
+		story_runner = &storycli.StoryCLI{}
 	case "html":
 		story_runner = &storyhtml.StoryHTML{Port: *port}
 	}

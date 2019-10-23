@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	// "os"
-	// "time"
 )
 
 func main() {
@@ -31,16 +29,14 @@ const tmpl_html = `
 		{{ range $i, $val := .Options }}<div><a href="{{ $i }}">{{ $i }}: {{ $val.Text }}</div>{{end}}
 	</body>
 	<body>
-		<div><a href="-1">Restart</div>
+		<div><a href="-1"><p padding-top: 3cm;>Restart</p></div>
 	</body>
 </html>`
 
 var tmpl *template.Template = template.Must(template.New("story_display").Parse(tmpl_html))
 
-// TODO use this channel in combo with the ServeHTTP, ListenAndServe stuff to get it working with the layout I have in the main runner file
 var option_channel chan int = make(chan int, 1)
 var render_html chan bool = make(chan bool, 1)
-var finished chan bool = make(chan bool)
 
 type StoryHTML struct {
 	Port      int
@@ -49,23 +45,20 @@ type StoryHTML struct {
 }
 
 func (s *StoryHTML) GetOption() int {
-	fmt.Println("")
 	option := <-option_channel
-	fmt.Println("STORY option RECV")
 	return option
 }
 
 func (s *StoryHTML) DisplayArc(arc *cyoa.StoryArc) bool {
+	// Update the arc so the other thread can handle it
 	s.h.arc = arc
 	render_html <- true
-	fmt.Println("STORY html SEND")
 	return true
 }
 
 func (s *StoryHTML) StartStory(filename string) *cyoa.StoryArc {
 	intro := cyoa.StartStory(filename)
 	s.h = handler{intro}
-	// option_channel <-
 	go http.ListenAndServe(fmt.Sprintf(":%d", s.Port), &s.h)
 	return cyoa.StartStory(filename)
 }
@@ -75,12 +68,9 @@ type handler struct {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// This gets the next option and also serves the current option
 	option_str := strings.TrimSpace(r.URL.Path)
-	// fmt.Printf("option_str is %v, length %v\n", option_str, len(option_str))
 	if option_str == "" || option_str == "/" {
 		<-render_html
-		fmt.Println("SERVE render_html RECV")
 		err := tmpl.Execute(w, h.arc)
 		if err != nil {
 			panic(err)
@@ -92,18 +82,11 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+	// Send the selection option, then wait for the arc to be updated in the main thread so that the html can be rendered
 	option_channel <- option
-	fmt.Println("SERVE option SEND")
 	<-render_html
-	fmt.Println("SERVE render_html RECV")
 	err = tmpl.Execute(w, h.arc)
 	if err != nil {
 		panic(err)
 	}
 }
-
-// type StoryRunner interface {
-//     GetOption() int
-//     DisplayArc(*StoryArc) bool
-//     StartStory(string) *StoryArc
-// }
