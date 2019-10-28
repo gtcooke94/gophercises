@@ -35,6 +35,8 @@ func StartStory(filename string) *StoryArc {
 
 func (arc *StoryArc) Advance(selection int) *StoryArc {
 	// If the selection is -1, return to the beginning
+	// Could use sync atomic for sentinel values
+	// sync library Once wraps a function and ensures it can only be called once
 	if selection == -1 {
 		return start_arc_ptr
 	}
