@@ -10,11 +10,12 @@ import (
 func main() {
 	file := flag.String("f", "ex1.html", "The html file you want to parse")
 	flag.Parse()
-	fmt.Println("Go")
 	html, err := os.Open(*file)
 	if err != nil {
 		panic(err)
 	}
 	links := link.ParseLinks(html)
-	fmt.Println(links)
+	for _, link := range links {
+		fmt.Println(link)
+	}
 }

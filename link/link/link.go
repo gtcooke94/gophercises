@@ -29,33 +29,6 @@ func ParseLinks(htmlText io.Reader) []Link {
 	}
 
 	dfs(htmlNode, "", false, &links)
-	// var nodes []*html.Node
-	// nodes := make([]*html.Node, 0)
-	// nodes = append(nodes, htmlNode)
-
-	// for node := htmlNode; len(nodes) != 0; {
-	//     node = nodes[len(nodes)-1]
-	//     nodes = nodes[:len(nodes)-1]
-	//
-	//     if node.Type == html.ElementNode && node.Data == "a" {
-	//         for _, s := range node.Attr {
-	//             if s.Key == "href" {
-	//                 // We have a  link!
-	//                 links = append(links, Link{s.Val, s.Val})
-	//             }
-	//         }
-	//         // An html tag
-	//
-	//     }
-	//     fmt.Println("==========")
-	//     fmt.Println(node.Type)
-	//     fmt.Println(node.Data)
-	//     fmt.Println(node.Attr)
-	//
-	//     for c := node.LastChild; c != nil; c = c.PrevSibling {
-	//         nodes = append(nodes, c)
-	//     }
-	// }
 	return links
 }
 
@@ -75,18 +48,13 @@ func dfs(node *html.Node, padding string, underHref bool, links *[]Link) string 
 				// links = append(links, Link{s.Val, s.Val})
 			}
 		}
-		// An html tag
 	}
-	fmt.Printf("%v%v\n", padding, "--------------------")
-	fmt.Printf("%v%v\n", padding, node.Type)
-	fmt.Printf("%v%v\n", padding, node.Data)
-	fmt.Printf("%v%v\n", padding, node.Attr)
-	fmt.Printf("%v%v\n", padding, underHref)
-
+	// dfs the html tree
 	for c := node.FirstChild; c != nil; c = c.NextSibling {
 		hrefText = hrefText + "" + dfs(c, padding+"  ", underHref, links)
 	}
 	if isHrefNode {
+		// Append and assign to the value that links points at
 		*links = append(*links, Link{hrefLink, strings.TrimSpace(hrefText)})
 	}
 	return hrefText
