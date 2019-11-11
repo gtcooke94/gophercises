@@ -18,5 +18,5 @@ package main
 import "github.com/gtcooke94/gophercises/task/cmd"
 
 func main() {
-  cmd.Execute()
+	cmd.Execute()
 }

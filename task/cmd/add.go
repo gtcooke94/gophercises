@@ -18,7 +18,6 @@ package cmd
 import (
 	"fmt"
 
-	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/gtcooke94/gophercises/task/task_helpers"
 	"github.com/spf13/cobra"
@@ -27,19 +26,14 @@ import (
 
 // addCmd represents the add command
 var addCmd = &cobra.Command{
-	Use:   "add",
+	Use:   "add <task>",
 	Short: "Add a task to the task list",
 	Long: `Adds a task to the list list. For example:
 
 	$ task add Do laundry
 
 Would add the "Do laundry" to the task list`,
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			return errors.New("Add requires a task to add")
-		}
-		return nil
-	},
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		task := strings.Join(args, " ")
 		addTask(task)
