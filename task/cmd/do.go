@@ -18,7 +18,9 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/boltdb/bolt"
 	"github.com/spf13/cobra"
+	"strconv"
 )
 
 // doCmd represents the do command
@@ -33,7 +35,37 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("do called")
+		taskNum, err := strconv.Atoi(args[0])
+		if err != nil {
+			panic(err)
+		}
+		doTask(taskNum)
 	},
+}
+
+func doTask(task int) {
+	db, err := bolt.Open("my.db", 0600, nil)
+	if err != nil {
+		panic(err)
+	}
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(TASK_BUCKET))
+		completeBucket := tx.Bucket([]byte(COMPLETE_BUCKET))
+
+		c := b.Cursor()
+
+		taskCounter := 0
+		var k, v []byte
+		for k, v = c.First(); k != nil; k, v = c.Next() {
+			if taskCounter == task {
+				break
+			}
+			taskCounter++
+		}
+		b.Delete(k)
+		completeBucket.Put(k, v)
+		return nil
+	})
 }
 
 func init() {

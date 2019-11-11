@@ -19,6 +19,8 @@ import (
 	"fmt"
 
 	"errors"
+	"github.com/boltdb/bolt"
+	"github.com/gtcooke94/gophercises/task/task_helpers"
 	"github.com/spf13/cobra"
 	"strings"
 )
@@ -40,8 +42,25 @@ Would add the "Do laundry" to the task list`,
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		task := strings.Join(args, " ")
+		addTask(task)
 		fmt.Println(task)
 	},
+}
+
+func addTask(task string) {
+	db, err := bolt.Open("my.db", 0600, nil)
+	if err != nil {
+		panic(err)
+	}
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(TASK_BUCKET))
+		seqId, _ := b.NextSequence()
+		id := task_helpers.Itob(int(seqId))
+		err := b.Put(id, []byte(task))
+		fmt.Printf("Adding %d: %s\n", id, task)
+		return err
+	})
+	defer db.Close()
 }
 
 func init() {
