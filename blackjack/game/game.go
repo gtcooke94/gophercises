@@ -20,39 +20,52 @@ const (
 	Pass
 )
 
-// type Game struct {
-// }
+type Game struct {
+	Players  []Player
+	gameDeck []deck.Card
+}
 
-var gameDeck []deck.Card = make([]deck.Card, 0)
-var players []Player = make([]Player, 0)
-var gameDeckPtr *[]deck.Card = &gameDeck
-var playersPtr *[]Player = &players
+// var gameDeck []deck.Card = make([]deck.Card, 0)
+// var players []Player = make([]Player, 0)
+// var gameDeckPtr *[]deck.Card = &gameDeck
+// var playersPtr *[]Player = &players
 
-func drawCard(d *[]deck.Card) deck.Card {
-	toReturn := (*d)[len(*d)-1]
-	*d = (*d)[:len(*d)-1]
+var game Game
+
+func (g *Game) drawCard() deck.Card {
+	toReturn := (*g).gameDeck[len((*g).gameDeck)-1]
+	(*g).gameDeck = (*g).gameDeck[:len((*g).gameDeck)-1]
 	return toReturn
 }
 
-func StartGame(nPlayers int, nDecks int) *[]Player {
-	fmt.Println("Starting Game...")
-	*gameDeckPtr = deck.New(deck.Deck(nDecks), deck.Shuffle)
-	for i := 0; i < nPlayers; i++ {
-		card1 := drawCard(gameDeckPtr)
-		card2 := drawCard(gameDeckPtr)
-		newPlayer := newPlayer([]deck.Card{card1, card2}, fmt.Sprintf("Player %d", i))
-		*playersPtr = append(*playersPtr, newPlayer)
-	}
-	card1 := drawCard(gameDeckPtr)
-	card2 := drawCard(gameDeckPtr)
-	*playersPtr = append(*playersPtr, newDealer([]deck.Card{card1, card2}))
-	return playersPtr
+func (g *Game) addPlayer() {
+	card1 := g.drawCard()
+	card2 := g.drawCard()
+	newPlayer := newPlayer([]deck.Card{card1, card2}, fmt.Sprintf("Player %d", len(g.Players)))
+	(*g).Players = append((*g).Players, newPlayer)
 }
 
-func (p *Player) Score() int {
+func (g *Game) addDealer() {
+	card1 := g.drawCard()
+	card2 := g.drawCard()
+	(*g).Players = append((*g).Players, newDealer([]deck.Card{card1, card2}))
+}
+
+func StartGame(nPlayers int, nDecks int) *Game {
+	fmt.Println("Starting Game...")
+	gameDeck := deck.New(deck.Deck(nDecks), deck.Shuffle)
+	game = Game{make([]Player, 0), gameDeck}
+	for i := 0; i < nPlayers; i++ {
+		game.addPlayer()
+	}
+	game.addDealer()
+	return &game
+}
+
+func (p Player) Score() int {
 	numAces := 0
 	score := 0
-	for _, card := range (*p).Cards {
+	for _, card := range p.Cards {
 		if card.Rank == deck.Ace {
 			numAces++
 		} else if card.Rank >= deck.Ten {

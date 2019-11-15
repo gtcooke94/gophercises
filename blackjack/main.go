@@ -7,8 +7,8 @@ import (
 
 func main() {
 	fmt.Println("vim-go")
-	players := blackjack.StartGame(2, 2)
-	printPlayers(players)
+	gamePtr := blackjack.StartGame(2, 2)
+	printPlayers((*gamePtr).Players)
 }
 
 func printPlayer(p blackjack.Player) {
@@ -19,8 +19,8 @@ func printPlayer(p blackjack.Player) {
 	}
 }
 
-func printPlayers(players *[]blackjack.Player) {
-	for _, player := range *players {
+func printPlayers(players []blackjack.Player) {
+	for _, player := range players {
 		printPlayer(player)
 	}
 }
