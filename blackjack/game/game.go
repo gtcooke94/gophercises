@@ -4,7 +4,7 @@ package blackjack
 import (
 	"fmt"
 	"github.com/gtcooke94/gophercises/deck"
-	"math"
+	"strconv"
 )
 
 type Player struct {
@@ -21,14 +21,15 @@ const MAXSCORE = 21
 
 const (
 	Hit Action = iota
-	Pass
+	Stand
 )
 
-var Actions = [...]Action{Hit, Pass}
+var Actions = [...]Action{Hit, Stand}
 
 type Game struct {
 	Players  []Player
 	gameDeck []deck.Card
+	discard  []deck.Card
 }
 
 // var gameDeck []deck.Card = make([]deck.Card, 0)
@@ -39,33 +40,51 @@ type Game struct {
 var game Game
 
 func (g *Game) drawCard() deck.Card {
+	if len(g.gameDeck) == 0 {
+		fmt.Println("The deck is out of cards... Shuffling up discarded card")
+		g.gameDeck = deck.Shuffle(g.discard)
+	}
 	toReturn := (*g).gameDeck[len((*g).gameDeck)-1]
 	(*g).gameDeck = (*g).gameDeck[:len((*g).gameDeck)-1]
 	return toReturn
 }
 
 func (g *Game) addPlayer() {
-	card1 := g.drawCard()
-	card2 := g.drawCard()
-	newPlayer := newPlayer([]deck.Card{card1, card2}, fmt.Sprintf("Player %d", len(g.Players)))
+	newPlayer := newPlayer(fmt.Sprintf("Player %d", len(g.Players)))
 	(*g).Players = append((*g).Players, newPlayer)
 }
 
 func (g *Game) addDealer() {
-	card1 := g.drawCard()
-	card2 := g.drawCard()
-	(*g).Players = append((*g).Players, newDealer([]deck.Card{card1, card2}))
+	(*g).Players = append((*g).Players, newDealer())
 }
 
+func (g *Game) StartRound() {
+	for i := range g.Players {
+		player := &(g.Players[i])
+		card1 := g.drawCard()
+		card2 := g.drawCard()
+		player.Cards = []deck.Card{card1, card2}
+	}
+}
 func StartGame(nPlayers int, nDecks int) *Game {
 	fmt.Println("Starting Game...")
 	gameDeck := deck.New(deck.Deck(nDecks), deck.Shuffle)
-	game = Game{make([]Player, 0), gameDeck}
+	game = Game{make([]Player, 0), gameDeck, make([]deck.Card, 0)}
 	for i := 0; i < nPlayers; i++ {
 		game.addPlayer()
 	}
 	game.addDealer()
 	return &game
+}
+
+func (g *Game) CleanupRound() {
+	for i := range g.Players {
+		player := g.Players[i]
+		for _, c := range player.Cards {
+			g.discard = append(g.discard, c)
+		}
+		player.Cards = make([]deck.Card, 0)
+	}
 }
 
 func (p Player) Score() int {
@@ -103,58 +122,34 @@ func scoreLogic(cards []deck.Card) (int, bool) {
 
 func (p Player) String() string {
 	var ret string
-	fmt.Println("DEBUG", p.DealerHiddenFlag, p.DealerFlag)
+	score := p.Score()
+	scoreStr := strconv.Itoa(score)
+	if score > MAXSCORE {
+		scoreStr = "BUST"
+	}
 	if p.DealerHiddenFlag && p.DealerFlag {
 		ret = fmt.Sprintf("%s: Cards: %s, HIDDEN\n", p.Name, p.Cards[0])
 	} else {
-		ret = fmt.Sprintf("%s: Score: %d. Cards: %v\n", p.Name, p.Score(), p.Cards)
+		ret = fmt.Sprintf("%s: Score: %s. Cards: %v\n", p.Name, scoreStr, p.Cards)
 	}
 	return ret
 }
 
 func (g *Game) PlayerTurn(p *Player, action Action) bool {
-	if (*p).Score() > MAXSCORE {
-		return false
-	}
 	switch action {
 	case Hit:
 		newCard := g.drawCard()
 		(*p).Cards = append((*p).Cards, newCard)
+		if (*p).Score() >= MAXSCORE {
+			return false
+		}
 		return true
-	case Pass:
+	case Stand:
 		return false
 	}
 	return false
 }
 
-func (g *Game) DealerTurn(p *Player) {
-	// Dealer hits on <=16, soft 17, holds otherwise
-	for hit := dealerHitCondition(*p); hit; {
-		newCard := g.drawCard()
-		(*p).Cards = append((*p).Cards, newCard)
-		hit = dealerHitCondition(*p)
-	}
-	(*p).DealerHiddenFlag = false
-	fmt.Println("DEBUG", (*p).DealerHiddenFlag)
-}
-
-func dealerHitCondition(p Player) bool {
-	if p.Score() <= 16 {
-		return true
-	} else if p.Score() == 17 {
-		_, soft17 := scoreLogic(p.Cards)
-		if soft17 {
-			return true
-		}
-	}
-	return false
-
-}
-
-func newPlayer(c []deck.Card, name string) Player {
-	return Player{Cards: c, Name: name, Chips: 0, DealerFlag: false, DealerHiddenFlag: false}
-}
-
-func newDealer(c []deck.Card) Player {
-	return Player{Cards: c, Name: "Dealer", Chips: int(math.Inf(1)), DealerFlag: true, DealerHiddenFlag: true}
+func newPlayer(name string) Player {
+	return Player{Cards: make([]deck.Card, 0), Name: name, Chips: 0, DealerFlag: false, DealerHiddenFlag: false}
 }

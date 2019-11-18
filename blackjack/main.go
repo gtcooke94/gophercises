@@ -12,13 +12,39 @@ import (
 func main() {
 	fmt.Println("vim-go")
 	gamePtr := blackjack.StartGame(2, 2)
-	printPlayers((*gamePtr).Players)
-	takeTurns(gamePtr)
-	finalScoring(gamePtr)
+	play := true
+	for play {
+		startRound(gamePtr)
+		printPlayers((*gamePtr).Players)
+		takeTurns(gamePtr)
+		finalScoring(gamePtr)
+		cleanupRound(gamePtr)
+		play = playAgain()
+	}
+}
+
+func startRound(g *blackjack.Game) {
+	fmt.Println("==================== Starting Round... ====================")
+	g.StartRound()
+}
+
+func cleanupRound(g *blackjack.Game) {
+	fmt.Println("==================== Cleaning up... ====================")
 }
 
 func finalScoring(g *blackjack.Game) {
 	printPlayers((*g).Players)
+}
+
+func playAgain() bool {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("Play again?\n0. No\n1. Yes")
+	play, _ := reader.ReadString('\n')
+	play = strings.Replace(play, "\n", "", -1)
+	if play == "1" {
+		return true
+	}
+	return false
 }
 
 func takeTurns(g *blackjack.Game) {
@@ -28,11 +54,12 @@ func takeTurns(g *blackjack.Game) {
 		if playerPtr.DealerFlag {
 			fmt.Println("====================")
 			(*g).DealerTurn(playerPtr)
-			continueTurn = false
+			// continueTurn = false
+			continue
 		}
+		fmt.Printf("==================== Player %d's Turn ====================\n", i)
+		fmt.Println(*playerPtr)
 		for continueTurn {
-			fmt.Println("====================")
-			fmt.Println(*playerPtr)
 			printOptions()
 			action, err := acceptOption()
 			for err != nil {
@@ -42,6 +69,7 @@ func takeTurns(g *blackjack.Game) {
 
 			}
 			continueTurn = (*g).PlayerTurn(playerPtr, blackjack.Action(action))
+			fmt.Println(*playerPtr)
 		}
 	}
 }

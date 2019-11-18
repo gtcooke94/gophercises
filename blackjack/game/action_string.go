@@ -9,12 +9,12 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[Hit-0]
-	_ = x[Pass-1]
+	_ = x[Stand-1]
 }
 
-const _Action_name = "HitPass"
+const _Action_name = "HitStand"
 
-var _Action_index = [...]uint8{0, 3, 7}
+var _Action_index = [...]uint8{0, 3, 8}
 
 func (i Action) String() string {
 	if i >= Action(len(_Action_index)-1) {
