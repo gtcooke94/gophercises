@@ -29,5 +29,5 @@ func dealerHitCondition(p Player) bool {
 }
 
 func newDealer() Player {
-	return Player{Cards: make([]deck.Card, 0), Name: "Dealer", Chips: int(math.Inf(1)), DealerFlag: true, DealerHiddenFlag: true}
+	return Player{Cards: make([]deck.Card, 0), Name: "Dealer", Chips: int(math.Inf(1)), DealerFlag: true, DealerHiddenFlag: true, CurrentBet: 0}
 }

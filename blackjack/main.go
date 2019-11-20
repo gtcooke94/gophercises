@@ -25,7 +25,17 @@ func main() {
 
 func startRound(g *blackjack.Game) {
 	fmt.Println("==================== Starting Round... ====================")
-	g.StartRound()
+	fmt.Println("==================== Place Bets... ====================")
+	for i := range g.Players {
+		player := &(g.Players[i])
+		if player.DealerFlag {
+			continue
+		}
+		fmt.Printf("%s Place Your Bet!\nChips: %d\n", player.Name, player.Chips)
+		acceptBet(g, player)
+	}
+	fmt.Println("==================== Dealing Cards... ====================")
+	g.DealCards()
 }
 
 func cleanupRound(g *blackjack.Game) {
@@ -34,6 +44,19 @@ func cleanupRound(g *blackjack.Game) {
 
 func finalScoring(g *blackjack.Game) {
 	printPlayers((*g).Players)
+	winners, ties, losers := g.DetermineWinners()
+	for _, player := range winners {
+		fmt.Printf("%s won\n", player.Name)
+		g.PayoutWin(player)
+	}
+	for _, player := range ties {
+		fmt.Printf("%s tied\n", player.Name)
+		g.TiedDealer(player)
+	}
+	for _, player := range losers {
+		fmt.Printf("%s lost\n", player.Name)
+		g.TakeBet(player)
+	}
 }
 
 func playAgain() bool {
@@ -85,6 +108,21 @@ func acceptOption() (int, error) {
 func printOptions() {
 	for i, action := range blackjack.Actions {
 		fmt.Printf("%d. %s\n", i, action)
+	}
+}
+
+func acceptBet(g *blackjack.Game, p *blackjack.Player) {
+	noBetPlaced := true
+	for noBetPlaced {
+		fmt.Print("Enter bet amount: ")
+		reader := bufio.NewReader(os.Stdin)
+		betStr, _ := reader.ReadString('\n')
+		betStr = strings.Replace(betStr, "\n", "", -1)
+		bet, _ := strconv.Atoi(betStr)
+		noBetPlaced = !g.PlaceBet(p, bet)
+		if noBetPlaced {
+			fmt.Println("Invalid Bet")
+		}
 	}
 }
 

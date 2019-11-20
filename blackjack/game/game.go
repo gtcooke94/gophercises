@@ -13,11 +13,14 @@ type Player struct {
 	Chips            int
 	DealerFlag       bool
 	DealerHiddenFlag bool
+	CurrentBet       int
 }
 
 type Action uint8
 
 const MAXSCORE = 21
+
+const MINBET = 1
 
 const (
 	Hit Action = iota
@@ -39,6 +42,51 @@ type Game struct {
 
 var game Game
 
+func (g *Game) DetermineWinners() ([]*Player, []*Player, []*Player) {
+	winners := make([]*Player, 0)
+	ties := make([]*Player, 0)
+	losers := make([]*Player, 0)
+	dealerScore := g.Players[len(g.Players)-1].Score()
+	for i := range g.Players {
+		player := &g.Players[i]
+		if player.DealerFlag {
+			continue
+		}
+		playerScore := player.Score()
+		// If a player busts, they lose
+		if playerScore > MAXSCORE {
+			losers = append(losers, player)
+		} else if dealerScore > MAXSCORE {
+			// If the dealer busts and the player didn't, the player wins
+			winners = append(winners, player)
+		} else {
+			// Neither busted, compare scores
+			if playerScore > dealerScore {
+				winners = append(winners, player)
+			} else if playerScore == dealerScore {
+				ties = append(ties, player)
+			} else {
+				losers = append(losers, player)
+			}
+		}
+	}
+	return winners, ties, losers
+}
+
+func (g *Game) PayoutWin(p *Player) {
+	// TODO after implementing betting
+	p.Chips = p.Chips + 2*p.CurrentBet
+}
+
+func (g *Game) TakeBet(p *Player) {
+	// TODO after implementing betting
+}
+
+func (g *Game) TiedDealer(p *Player) {
+	// TODO after implementing betting
+	p.Chips = p.Chips + p.CurrentBet
+}
+
 func (g *Game) drawCard() deck.Card {
 	if len(g.gameDeck) == 0 {
 		fmt.Println("The deck is out of cards... Shuffling up discarded card")
@@ -58,7 +106,19 @@ func (g *Game) addDealer() {
 	(*g).Players = append((*g).Players, newDealer())
 }
 
-func (g *Game) StartRound() {
+func (g *Game) PlaceBet(player *Player, bet int) bool {
+	if bet < MINBET {
+		return false
+	}
+	if bet > player.Chips {
+		return false
+	}
+	player.CurrentBet = bet
+	player.Chips = player.Chips - bet
+	return true
+}
+
+func (g *Game) DealCards() {
 	for i := range g.Players {
 		player := &(g.Players[i])
 		card1 := g.drawCard()
@@ -84,6 +144,7 @@ func (g *Game) CleanupRound() {
 			g.discard = append(g.discard, c)
 		}
 		player.Cards = make([]deck.Card, 0)
+		player.CurrentBet = 0
 	}
 }
 
@@ -129,8 +190,10 @@ func (p Player) String() string {
 	}
 	if p.DealerHiddenFlag && p.DealerFlag {
 		ret = fmt.Sprintf("%s: Cards: %s, HIDDEN\n", p.Name, p.Cards[0])
+	} else if p.DealerFlag {
+		ret = fmt.Sprintf("%s: Score: %s.\nCards: %v\n", p.Name, scoreStr, p.Cards)
 	} else {
-		ret = fmt.Sprintf("%s: Score: %s. Cards: %v\n", p.Name, scoreStr, p.Cards)
+		ret = fmt.Sprintf("%s: Score: %s.\nCards: %v\nChips: %d\nCurrent Bet: %d", p.Name, scoreStr, p.Cards, p.Chips, p.CurrentBet)
 	}
 	return ret
 }
@@ -151,5 +214,5 @@ func (g *Game) PlayerTurn(p *Player, action Action) bool {
 }
 
 func newPlayer(name string) Player {
-	return Player{Cards: make([]deck.Card, 0), Name: name, Chips: 0, DealerFlag: false, DealerHiddenFlag: false}
+	return Player{Cards: make([]deck.Card, 0), Name: name, Chips: 100, DealerFlag: false, DealerHiddenFlag: false, CurrentBet: 0}
 }
