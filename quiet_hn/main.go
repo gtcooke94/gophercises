@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	// "errors"
 	"flag"
 	"fmt"
 	"html/template"
@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gtcooke94/gophercises/quiet_hn/hn"
@@ -31,15 +32,34 @@ func main() {
 }
 
 func handler(numStories int, tpl *template.Template) http.HandlerFunc {
+	sc := storyCache{
+		numStories: numStories,
+		duration:   3 * time.Second,
+	}
+
+	go func() {
+		ticker := time.NewTicker(3 * time.Second)
+		for {
+			temp := storyCache{
+				numStories: numStories,
+				duration:   6 * time.Second,
+			}
+			temp.stories()
+			sc.mutex.Lock()
+			sc.cache = temp.cache
+			sc.expiration = temp.expiration
+			sc.mutex.Unlock()
+			<-ticker.C
+		}
+	}()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-
-		stories, err := getTopItems(numStories)
+		stories, _ := sc.stories()
 		data := templateData{
 			Stories: stories,
 			Time:    time.Now().Sub(start),
 		}
-		err = tpl.Execute(w, data)
+		err := tpl.Execute(w, data)
 		if err != nil {
 			http.Error(w, "Failed to process the template", http.StatusInternalServerError)
 			return
@@ -47,48 +67,103 @@ func handler(numStories int, tpl *template.Template) http.HandlerFunc {
 	})
 }
 
-func getTopItems(numStories int) ([]item, error) {
-	var client hn.Client
-	ids, err := client.TopItems()
-	stories := make(chan concurrencyItem, len(ids))
-	if err != nil {
-		return nil, errors.New("Failed to load top stories")
+type storyCache struct {
+	cache      []item
+	useA       bool
+	expiration time.Time
+	duration   time.Duration
+	mutex      sync.Mutex
+	numStories int
+}
+
+func (sc *storyCache) stories() ([]item, error) {
+	// Use pointer to storyCache so that the mutex doesn't get copied, etc
+	// Using global cache
+	sc.mutex.Lock()
+	// Good practice to defer unlocks, that way you can't forget if you have multiple returns
+	defer sc.mutex.Unlock()
+	if sc.expiration.Sub(time.Now()) > 0 {
+		return sc.cache, nil
 	}
 
-	counter := make(chan int, len(ids))
+	stories, err := getStories(sc.numStories)
+	if err != nil {
+		return nil, err
+	}
+	sc.cache = stories
+	sc.expiration = time.Now().Add(sc.duration)
+	return sc.cache, nil
+}
+
+// var (
+//     cache           []item
+//     cacheExpiration time.Time
+//     cacheMutex      sync.Mutex
+// )
+
+// func getCachedStories(numStories int) ([]item, error) {
+//     // Using global cache
+//     cacheMutex.Lock()
+//     // Good practice to defer unlocks, that way you can't forget if you have multiple returns
+//     defer cacheMutex.Unlock()
+//     if cacheExpiration.Sub(time.Now()) > 0 {
+//         return cache, nil
+//     }
+//
+//     stories, err := getStories(numStories)
+//     if err != nil {
+//         return nil, err
+//     }
+//     cache = stories
+//     cacheExpiration = time.Now().Add(15 * time.Minute)
+//     return stories, nil
+// }
+
+func getStories(numStories int) ([]item, error) {
+	var client hn.Client
+	ids, err := client.TopItems()
+	stories := make([]item, 0)
+
+	currentIdIdx := 0
+	numToGet := int(numStories * 5 / 4)
+	for len(stories) < numStories {
+		newStories, _ := getTopItems(ids[currentIdIdx:currentIdIdx+numToGet], numStories)
+		stories = append(stories, newStories...)
+		currentIdIdx += numToGet
+		numToGet = int((numStories - len(stories)) * 5 / 4)
+	}
+	stories = stories[:numStories]
+	return stories, err
+}
+
+func getTopItems(ids []int, numStories int) ([]item, error) {
+	stories := make(chan concurrencyItem, len(ids))
 	for i, id := range ids {
 		go func(id int, order int) {
-			hnItem, err := client.GetItem(id)
-			if err != nil {
-				counter <- 0
-				return
-			}
+			var client hn.Client
+			hnItem, _ := client.GetItem(id)
 			item := parseHNItem(hnItem)
-			if isStoryLink(item) {
-				stories <- concurrencyItem{item: item, orderBy: order}
-			}
-			counter <- 0
+			stories <- concurrencyItem{item: item, orderBy: order}
 			return
 		}(id, i)
 	}
-	for len(counter) != len(ids) {
-		time.Sleep(1 * time.Millisecond)
-	}
-	// At this point all stories are processed
-	close(stories)
 	// Put them all in a list
 	storiesList := make([]concurrencyItem, 0, len(ids))
-	for story := range stories {
-		storiesList = append(storiesList, story)
+	for i := 0; i < len(ids); i++ {
+		storiesList = append(storiesList, <-stories)
 	}
+
 	// Sort the stories by orderBy which should keep them in order
 	sort.Slice(storiesList, func(i, j int) bool {
 		return storiesList[i].orderBy < storiesList[j].orderBy
 	})
 	orderedStories := make([]item, 0, numStories)
 	// Get then return the top 30
-	for _, story := range storiesList[:30] {
-		orderedStories = append(orderedStories, story.item)
+	for _, story := range storiesList {
+		item := story.item
+		if isStoryLink(item) {
+			orderedStories = append(orderedStories, item)
+		}
 	}
 
 	return orderedStories, nil
